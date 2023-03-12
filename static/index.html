@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="static/index.css">
+    <script src="static/index.js"></script>
     <script src="static/htmx.min.js"></script>
     <script src="static/disable-element.js"></script>
   </head>
@@ -12,11 +13,14 @@
     <div id="search">
       <h2 id="header">Stable Diffusion</h2>
 
-      <form id="generate-form" hx-post="/generate" hx-target="#results" hx-swap="afterbegin" hx-ext="disable-element" hx-disable-element="#fieldset-search" hx-indicator="#loading">
+      <form id="generate-form" hx-post="/generate" hx-target="#results" hx-swap="afterbegin" hx-ext="disable-element" hx-disable-element="#fieldset-search">
         <fieldset id="fieldset-search">
-          <input type="text" id="prompt" name="prompt">
+          <input type="text" id="positive" name="positive" placeholder="Positive prompt">
+          <input type="text" id="negative" name="negative" placeholder="Negative prompt">
           <input type="submit" id="submit" value="Generate">
         </fieldset>
+        <details>
+          <summary>Options</summary>
         <fieldset id="fieldset-config">
           <label for="iterations">Images to generate:</label>
           <input value="1" type="number" id="iterations" name="iterations">
@@ -48,17 +52,18 @@
             <option value="960">960</option> <option value="1024">1024</option>
           </select>
           <br>
-          <label title="Upload an image to use img2img" for="initimg">Img2Img Init:</label>
+          <label title="Upload an image to use img2img" for="initimg">Image to image:</label>
           <input type="file" id="initimg" name="initimg" accept=".jpg, .jpeg, .png">
           <label title="Set to -1 for random seed" for="seed">Seed:</label>
           <input value="-1" type="number" id="seed" name="seed">
           <button type="button" id="reset">&olarr;</button>
         </fieldset>
+        </details>
       </form>
-      <!--<progress id="progress" value="0" max="1" hx-get="/progress" hx-trigger="every 1s" hx-swap="outerHTML"></progress>-->
     </div>
+    <hr>
     <div id="results">
-      <img id="loading" src="static/bars.svg"></img>
+      <i id="nothing">Nothing yet...</i>
     </div>
   </body>
 </html>
