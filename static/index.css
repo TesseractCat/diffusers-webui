@@ -83,7 +83,6 @@ fieldset {
     border-radius: 5px;
 }
 .loading {
-    width: 30vh;
     border: 1px solid lightcoral;
 
     background-size: 10px 10px;
@@ -96,7 +95,6 @@ fieldset {
     transition: width 0.2s;
 }
 .queue {
-    width: 30vh;
     border: 1px solid lightblue;
 
     background-size: 10px 10px;

@@ -31,6 +31,10 @@ function cancel(item) {
     fetch("/cancel?filename=" + filename);
     item.remove();
 }
+function flashTitle() {
+    document.title = "* Done *";
+    setTimeout(() => document.title = "Stable Diffusion", 500);
+}
 
 window.onload = () => {
     document.querySelectorAll("textarea").forEach(elem => {

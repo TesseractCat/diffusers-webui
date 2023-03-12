@@ -1,5 +1,6 @@
 import torch
 from diffusers import StableDiffusionPipeline, EulerAncestralDiscreteScheduler
+from compel import Compel
 
 import random
 from functools import partial
@@ -18,6 +19,7 @@ pipe = StableDiffusionPipeline.from_pretrained(
     torch_dtype=torch.float16,
     local_files_only=True
 )
+compel = Compel(tokenizer=pipe.tokenizer, text_encoder=pipe.text_encoder)
 pipe.safety_checker = None
 pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
 pipe.set_progress_bar_config(disable=True)
@@ -46,8 +48,8 @@ def run(data, filename):
         data['seed'] = str(seed)
         print(f"Generating [{seed}]: +{data['positive']} | -{data['negative']}")
         result = pipe(
-            prompt=data['positive'],
-            negative_prompt=data['negative'],
+            prompt_embeds=compel(data['positive']),
+            negative_prompt_embeds=compel(data['negative']),
             width=int(data['width']),
             height=int(data['height']),
             num_inference_steps=int(data['steps']),
@@ -96,6 +98,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 progress = 0
                 self.wfile.write(f'''\
                 <div class="loading"
+                    style="aspect-ratio: {data['width']}/{data['height']};"
                     title="+{data['positive']} | -{data['negative']}"
                     hx-get="/progress"
                     hx-trigger="load delay:0.5s"
@@ -133,6 +136,7 @@ class DreamServer(BaseHTTPRequestHandler):
             if data != None:
                 self.wfile.write(f'''\
                 <div class="loading"
+                    style="aspect-ratio: {data['width']}/{data['height']};"
                     title="+{data['positive']} | -{data['negative']}"
                     hx-get="/progress"
                     hx-trigger="load delay:0.5s"
@@ -147,6 +151,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 self.wfile.write(f'''\
                 <img src="{filename}"
                      style="aspect-ratio: {data['width']}/{data['height']};"
+                     onload="flashTitle();"
                      oncontextmenu="applySettings(event, {settings});"
                      onclick="window.open(this.src, '_blank').focus();"></img>
                 '''.encode())
@@ -177,6 +182,7 @@ class DreamServer(BaseHTTPRequestHandler):
 
                 elements.append(f'''\
                 <div class="queue"
+                    style="aspect-ratio: {data['width']}/{data['height']};"
                     title="+{data['positive']} | -{data['negative']}"
                     hx-get="/queue"
                     hx-trigger="every 1s"
@@ -187,7 +193,9 @@ class DreamServer(BaseHTTPRequestHandler):
                 ''')
             elements.reverse()
             self.wfile.write("\n".join(elements).encode())
-            
+
+    def log_request(self, code='-', size='-'):
+        return
 
 if __name__ == "__main__":
     # Start server
