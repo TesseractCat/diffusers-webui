@@ -28,7 +28,7 @@ function applySettings(e, settings) {
 
 function cancel(item) {
     let filename = JSON.parse(item.getAttribute("hx-vals")).filename;
-    fetch("/cancel?filename=" + filename);
+    fetch("/cancel?filename=" + encodeURIComponent(filename));
     item.remove();
 }
 function flashTitle() {

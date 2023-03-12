@@ -125,6 +125,7 @@ class DreamServer(BaseHTTPRequestHandler):
             filename = query['filename'][0]
             index = next(i for i, x in enumerate(queue) if x['filename'] == filename)
             queue.pop(index)
+            print(f"Cancelled queue item [{index}]: {filename}")
         elif parsed.path == "/progress":
             self.send_response(200)
             self.send_header("Content-type", "text/html")
@@ -171,6 +172,8 @@ class DreamServer(BaseHTTPRequestHandler):
             data = {k: v[0] for k, v in data.items()}
             data['positive'] = data.get('positive', '')
             data['negative'] = data.get('negative', '')
+
+            print(f"Queued {data['iterations']} image(s): +{data['positive']} | -{data['negative']}")
 
             elements = []
             for i in range(int(data['iterations'])):
