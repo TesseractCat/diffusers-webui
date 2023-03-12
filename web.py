@@ -25,20 +25,25 @@ print("Moving to GPU...")
 pipe = pipe.to("cuda")
 pipe.enable_xformers_memory_efficient_attention()
 
+done = {}
 queue = []
 progress = 0
 def update_progress(data, s, t, l):
     global progress
     progress = s/int(data['steps'])
-def run(data, path):
+def run(data, filename):
+    global done
     global queue
     global progress
 
     with torch.inference_mode():
+        data = data.copy() # Shallow clone because we are modifying seed
+
         seed = int(data['seed'])
         generator = torch.Generator(device="cuda").manual_seed(seed)
         if seed == -1:
             seed = generator.seed()
+        data['seed'] = str(seed)
         print(f"Generating [{seed}]: +{data['positive']} | -{data['negative']}")
         result = pipe(
             prompt=data['positive'],
@@ -51,12 +56,13 @@ def run(data, path):
             callback=partial(update_progress, data)
         )
         image = result.images[0]
-        image.save(path)
-        progress = 1
+        image.save(filename)
         queue.pop(0)
+        done[filename] = data
 
 class DreamServer(BaseHTTPRequestHandler):
     def do_GET(self):
+        global done
         global queue
         global progress
 
@@ -136,8 +142,12 @@ class DreamServer(BaseHTTPRequestHandler):
                 </div>\
                 '''.encode())
             else:
+                data = done[filename]
+                settings = json.dumps(data).replace('"', '&quot;')
                 self.wfile.write(f'''\
                 <img src="{filename}"
+                     style="aspect-ratio: {data['width']}/{data['height']};"
+                     oncontextmenu="applySettings(event, {settings});"
                      onclick="window.open(this.src, '_blank').focus();"></img>
                 '''.encode())
         else:

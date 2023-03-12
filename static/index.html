@@ -15,8 +15,8 @@
 
       <form id="generate-form" hx-post="/generate" hx-target="#results" hx-swap="afterbegin" hx-ext="disable-element" hx-disable-element="#fieldset-search">
         <fieldset id="fieldset-search">
-          <input type="text" id="positive" name="positive" placeholder="Positive prompt">
-          <input type="text" id="negative" name="negative" placeholder="Negative prompt">
+          <textarea type="text" id="positive" name="positive" placeholder="Positive prompt"></textarea>
+          <textarea type="text" id="negative" name="negative" placeholder="Negative prompt"></textarea>
           <input type="submit" id="submit" value="Generate">
         </fieldset>
         <details>

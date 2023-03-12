@@ -5,11 +5,26 @@ body {
     background-color: ghostwhite;
 }
 hr {
+    width: 300px;
     border: none;
     border-top: 1px solid black;
     margin-top: 30px;
     margin-bottom: 30px;
 }
+textarea {
+    resize: none;
+}
+summary {
+    cursor: pointer;
+}
+input:not([type='file']), select, button, input::file-selector-button {
+    border: 1px solid black;
+}
+label {
+    white-space: nowrap;
+    font-style: italic;
+}
+
 #header {
     text-decoration: dotted underline;
 }
@@ -95,10 +110,4 @@ input[type="number"] {
 }
 #seed {
     width: 150px;
-}
-hr {
-    width: 200px;
-}
-label {
-    white-space: nowrap;
 }
