@@ -58,7 +58,7 @@ def run(data, filename):
             callback=partial(update_progress, data)
         )
         image = result.images[0]
-        image.save(filename)
+        image.save(filename, 'jpeg', progressive=True, quality=90)
         queue.pop(0)
         done[filename] = data
 
@@ -136,7 +136,7 @@ class DreamServer(BaseHTTPRequestHandler):
 
             if data != None:
                 self.wfile.write(f'''\
-                <div class="loading"
+                <div id="loading" class="loading"
                     style="aspect-ratio: {data['width']}/{data['height']};"
                     title="+{data['positive']} | -{data['negative']}"
                     hx-get="/progress"
@@ -152,7 +152,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 self.wfile.write(f'''\
                 <img src="{filename}"
                      style="aspect-ratio: {data['width']}/{data['height']};"
-                     onload="flashTitle();"
+                     onload="flashTitle();this.style.opacity='1';"
                      oncontextmenu="applySettings(event, {settings});"
                      onclick="window.open(this.src, '_blank').focus();"></img>
                 '''.encode())
@@ -177,7 +177,7 @@ class DreamServer(BaseHTTPRequestHandler):
 
             elements = []
             for i in range(int(data['iterations'])):
-                fileprompt = data['positive'].replace("'", "").replace('"', "")[:20]
+                fileprompt = data['positive'].replace("'", "").replace('"', "").replace("/", "")[:20]
                 filename = f"./outputs/{fileprompt}-{random.getrandbits(64)}.jpg"
 
                 entry = {"data": data, "filename": filename}
@@ -188,7 +188,7 @@ class DreamServer(BaseHTTPRequestHandler):
                     style="aspect-ratio: {data['width']}/{data['height']};"
                     title="+{data['positive']} | -{data['negative']}"
                     hx-get="/queue"
-                    hx-trigger="every 1s"
+                    hx-trigger="every 1s [document.getElementById('loading') == null]"
                     hx-vals='{{"filename": "{filename}"}}'
                     hx-swap="outerHTML"
                     onclick="cancel(this);">

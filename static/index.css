@@ -24,6 +24,9 @@ label {
     white-space: nowrap;
     font-style: italic;
 }
+input[type="number"] {
+    width: 60px;
+}
 
 #header {
     text-decoration: dotted underline;
@@ -92,7 +95,7 @@ fieldset {
     border-radius: 5px 0px 0px 5px;
     height:100%;
     background-color: lightcoral;
-    transition: width 0.2s;
+    transition: width 0.4s;
 }
 .queue {
     border: 1px solid lightblue;
@@ -103,9 +106,11 @@ fieldset {
 #fieldset-config {
     line-height:2em;
 }
-input[type="number"] {
-    width: 60px;
-}
 #seed {
     width: 150px;
+}
+
+img {
+    opacity: 0;
+    transition: opacity 0.1s ease-out;
 }
