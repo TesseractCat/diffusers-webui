@@ -151,6 +151,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 settings = json.dumps(data).replace('"', '&quot;')
                 self.wfile.write(f'''\
                 <img src="{filename}"
+                     title="+{data['positive']} | -{data['negative']}"
                      style="aspect-ratio: {data['width']}/{data['height']};"
                      onload="flashTitle();this.style.opacity='1';"
                      oncontextmenu="applySettings(event, {settings});"
