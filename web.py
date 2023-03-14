@@ -99,7 +99,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 self.wfile.write(f'''\
                 <div class="loading"
                     style="aspect-ratio: {data['width']}/{data['height']};"
-                    title="+{data['positive']} | -{data['negative']}"
+                    title="{data['title']}"
                     hx-get="/progress"
                     hx-trigger="load delay:0.5s"
                     hx-vals='{{"filename": "{filename}"}}'
@@ -138,7 +138,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 self.wfile.write(f'''\
                 <div id="loading" class="loading"
                     style="aspect-ratio: {data['width']}/{data['height']};"
-                    title="+{data['positive']} | -{data['negative']}"
+                    title="{data['title']}"
                     hx-get="/progress"
                     hx-trigger="load delay:0.5s"
                     hx-vals='{{"filename": "{filename}"}}'
@@ -151,7 +151,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 settings = json.dumps(data).replace('"', '&quot;')
                 self.wfile.write(f'''\
                 <img src="{filename}"
-                     title="+{data['positive']} | -{data['negative']}"
+                     title="{data['title']}"
                      style="aspect-ratio: {data['width']}/{data['height']};"
                      onload="flashTitle();this.style.opacity='1';"
                      oncontextmenu="applySettings(event, {settings});"
@@ -173,6 +173,7 @@ class DreamServer(BaseHTTPRequestHandler):
             data = {k: v[0] for k, v in data.items()}
             data['positive'] = data.get('positive', '')
             data['negative'] = data.get('negative', '')
+            data['title'] = f"+{data['positive']} | -{data['negative']}".replace('"', "&quot;")
 
             print(f"Queued {data['iterations']} image(s): +{data['positive']} | -{data['negative']}")
 
@@ -187,7 +188,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 elements.append(f'''\
                 <div class="queue"
                     style="aspect-ratio: {data['width']}/{data['height']};"
-                    title="+{data['positive']} | -{data['negative']}"
+                    title="{data['title']}"
                     hx-get="/queue"
                     hx-trigger="every 1s [document.getElementById('loading') == null]"
                     hx-vals='{{"filename": "{filename}"}}'
