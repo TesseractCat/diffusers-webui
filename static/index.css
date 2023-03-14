@@ -7,9 +7,8 @@ body {
     margin-bottom: 20vh;
 }
 hr {
-    width: 300px;
     border: none;
-    border-top: 1px solid black;
+    border-top: 1px dotted black;
     margin-top: 30px;
     margin-bottom: 30px;
 }
@@ -32,9 +31,13 @@ input[type="number"] {
 
 #header {
     display: inline-block;
-    border: 4px solid black;
     padding: 4px;
     user-select: none;
+
+    /* border: 4px solid black; */
+    background-color: black;
+    color: ghostwhite;
+    border-radius: 3px;
 }
 #search {
     margin-left: auto;
@@ -50,6 +53,10 @@ fieldset {
     display: flex;
     flex-wrap: wrap;
     row-gap: 10px;
+
+    margin: 0px;
+    padding-left: 0px;
+    padding-right: 0px;
 }
 #positive, #negative {
     flex-grow: 1;
