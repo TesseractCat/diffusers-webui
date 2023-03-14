@@ -23,11 +23,11 @@
           <summary>Options</summary>
         <fieldset id="fieldset-config">
           <label for="iterations">Images to generate:</label>
-          <input value="1" type="number" id="iterations" name="iterations">
+          <input value="1" min="1" type="number" id="iterations" name="iterations">
           <label for="steps">Steps:</label>
-          <input value="20" type="number" id="steps" name="steps">
+          <input value="20" min="1" type="number" id="steps" name="steps">
           <label for="cfgscale">Cfg Scale:</label>
-          <input value="7.5" type="number" id="cfgscale" name="cfgscale" step="any">
+          <input value="7.5" min="1" type="number" id="cfgscale" name="cfgscale" step="any">
           <span>&bull;</span>
           <label title="Set to multiple of 64" for="width">Width:</label>
           <select id="width" name="width">
@@ -52,10 +52,10 @@
             <option value="960">960</option> <option value="1024">1024</option>
           </select>
           <br>
-          <label title="Upload an image to use img2img" for="initimg">Image to image:</label>
+          <label title="Upload an image to use image to image" for="initimg">Image to image:</label>
           <input type="file" id="initimg" name="initimg" accept=".jpg, .jpeg, .png">
           <label title="Set to -1 for random seed" for="seed">Seed:</label>
-          <input value="-1" type="number" id="seed" name="seed">
+          <input value="-1" min="-1" type="number" id="seed" name="seed">
           <button type="button" id="reset">&olarr;</button>
         </fieldset>
         </details>
