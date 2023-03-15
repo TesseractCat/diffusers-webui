@@ -1,5 +1,6 @@
 * {
     font-family: 'Arial';
+    user-select: none;
 }
 body {
     background-color: ghostwhite;
@@ -28,11 +29,20 @@ label {
 input[type="number"] {
     width: 60px;
 }
+input[type="number"], select {
+    border-radius: 3px;
+}
+button, input[type="submit"], input::file-selector-button {
+    cursor: pointer;
+    border-radius: 3px;
+}
+button:active, input[type="submit"]:active, input::file-selector-button:active {
+    background-color:lightgrey;
+}
 
 #header {
     display: inline-block;
     padding: 4px;
-    user-select: none;
 
     /* border: 4px solid black; */
     background-color: black;
@@ -59,6 +69,7 @@ fieldset {
     padding-right: 0px;
 }
 #positive, #negative {
+    height: 5em;
     flex-grow: 1;
 
     padding: 5px 10px 5px 10px;
@@ -66,7 +77,7 @@ fieldset {
     outline: none;
 }
 #positive {
-    /* border-radius: 20px 0px 0px 20px; */
+    border-radius: 3px 0px 0px 3px;
     border-right: none;
 }
 #negative {
@@ -74,12 +85,9 @@ fieldset {
     border-right: none;
 }
 #submit {
-    /* border-radius: 0px 20px 20px 0px; */
+    border-radius: 0px 3px 3px 0px;
     padding: 5px 10px 5px 10px;
     border: 1px solid black;
-}
-#submit:active {
-    background-color:lightgrey;
 }
 #results {
     max-width: 1000px;
