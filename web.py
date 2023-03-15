@@ -1,6 +1,7 @@
 import torch
-from diffusers import StableDiffusionPipeline, EulerAncestralDiscreteScheduler
+from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, EulerAncestralDiscreteScheduler
 from compel import Compel
+from PIL import Image
 
 import random
 from functools import partial
@@ -8,10 +9,13 @@ import time
 import json
 from urllib.parse import urlparse, parse_qs, unquote, quote
 import base64
+from io import BytesIO
 import mimetypes
 import os
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from multipart import MultipartParser
 
 print("Loading model...")
 pipe = StableDiffusionPipeline.from_pretrained(
@@ -26,6 +30,9 @@ pipe.set_progress_bar_config(disable=True)
 print("Moving to GPU...")
 pipe = pipe.to("cuda")
 pipe.enable_xformers_memory_efficient_attention()
+
+img2img_pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
+img2img_pipe.set_progress_bar_config(disable=True)
 
 done = {}
 queue = []
@@ -47,16 +54,28 @@ def run(data, filename):
             seed = generator.seed()
         data['seed'] = str(seed)
         print(f"Generating [{seed}]: +{data['positive']} | -{data['negative']}")
-        result = pipe(
-            prompt_embeds=compel(data['positive']),
-            negative_prompt_embeds=compel(data['negative']),
-            width=int(data['width']),
-            height=int(data['height']),
-            num_inference_steps=int(data['steps']),
-            guidance_scale=float(data['cfgscale']),
-            generator=generator,
-            callback=partial(update_progress, data)
-        )
+        result = None
+        if 'initimg' not in data:
+            result = pipe(
+                prompt_embeds=compel(data['positive']),
+                negative_prompt_embeds=compel(data['negative']),
+                width=int(data['width']),
+                height=int(data['height']),
+                num_inference_steps=int(data['steps']),
+                guidance_scale=float(data['cfgscale']),
+                generator=generator,
+                callback=partial(update_progress, data)
+            )
+        else:
+            result = img2img_pipe(
+                image=data['initimg'],
+                prompt_embeds=compel(data['positive']),
+                negative_prompt_embeds=compel(data['negative']),
+                num_inference_steps=int(data['steps']),
+                guidance_scale=float(data['cfgscale']),
+                generator=generator,
+                callback=partial(update_progress, data)
+            )
         image = result.images[0]
         image.save(filename, 'jpeg', progressive=True, quality=90)
         queue.pop(0)
@@ -148,6 +167,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 '''.encode())
             else:
                 data = done[filename]
+                data['initimg'] = None
                 settings = json.dumps(data).replace('"', '&quot;')
                 self.wfile.write(f'''\
                 <img src="{filename}"
@@ -169,8 +189,12 @@ class DreamServer(BaseHTTPRequestHandler):
 
         if self.path == "/generate":
             content_length = int(self.headers['Content-Length'])
-            data = parse_qs(self.rfile.read(content_length).decode("utf-8"))
-            data = {k: v[0] for k, v in data.items()}
+            #data = parse_qs(self.rfile.read(content_length).decode("utf-8"))
+            #data = {k: v[0] for k, v in data.items()}
+            boundary = self.headers['Content-Type'].split("boundary=")[1]
+            data = MultipartParser(self.rfile, boundary.encode(), content_length, charset="utf-8")
+            data = {part.name: (Image.open(BytesIO(part.raw)) if part.name == "initimg" else part.value) for part in data}
+
             data['positive'] = data.get('positive', '')
             data['negative'] = data.get('negative', '')
             data['title'] = f"+{data['positive']} | -{data['negative']}"

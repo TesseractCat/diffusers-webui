@@ -2,7 +2,7 @@
   <head>
     <title>Stable Diffusion</title>
     <link rel="icon" href="data:,">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="static/index.css">
     <script src="static/index.js"></script>
@@ -13,7 +13,7 @@
     <div id="search">
       <h2 id="header">Stable Diffusion</h2>
 
-      <form id="generate-form" hx-post="/generate" hx-target="#results" hx-swap="afterbegin" hx-ext="disable-element" hx-disable-element="#fieldset-search">
+      <form id="generate-form" hx-encoding="multipart/form-data" hx-post="/generate" hx-target="#results" hx-swap="afterbegin" hx-ext="disable-element" hx-disable-element="#fieldset-search">
         <fieldset id="fieldset-search">
           <textarea type="text" id="positive" name="positive" placeholder="Positive prompt"></textarea>
           <textarea type="text" id="negative" name="negative" placeholder="Negative prompt"></textarea>
