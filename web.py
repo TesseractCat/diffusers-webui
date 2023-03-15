@@ -68,11 +68,12 @@ def run(data, filename):
             )
         else:
             result = img2img_pipe(
-                image=data['initimg'],
+                image=data['initimg'].resize((int(data['width']), int(data['height']))),
                 prompt_embeds=compel(data['positive']),
                 negative_prompt_embeds=compel(data['negative']),
                 num_inference_steps=int(data['steps']),
                 guidance_scale=float(data['cfgscale']),
+                strength=float(data['strength']),
                 generator=generator,
                 callback=partial(update_progress, data)
             )
@@ -194,6 +195,7 @@ class DreamServer(BaseHTTPRequestHandler):
             boundary = self.headers['Content-Type'].split("boundary=")[1]
             data = MultipartParser(self.rfile, boundary.encode(), content_length, charset="utf-8")
             data = {part.name: (Image.open(BytesIO(part.raw)) if part.name == "initimg" else part.value) for part in data}
+            print(data)
 
             data['positive'] = data.get('positive', '')
             data['negative'] = data.get('negative', '')

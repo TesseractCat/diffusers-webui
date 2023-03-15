@@ -60,6 +60,9 @@
             <label title="Upload an image to use image to image" for="initimg">Image to image:
               <input type="file" id="initimg" name="initimg" accept=".jpg, .jpeg, .png">
             </label>
+            <label for="strength">Strength:
+              <input value="0.8" min="0" max="1" type="number" id="strength" name="strength" step="any">
+            </label>
             <label title="Set to -1 for random seed" for="seed">Seed:
               <input value="-1" min="-1" type="number" id="seed" name="seed">
               <button type="button" id="reset">&olarr;</button>
