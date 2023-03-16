@@ -80,6 +80,21 @@ window.onload = () => {
         document.querySelector("#nothing")?.remove();
     });
 
+    // Drag and drop
+    document.documentElement.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        document.body.classList.add('dragging');
+    });
+    document.documentElement.addEventListener('dragleave', () => {
+        document.body.classList.remove('dragging');
+    });
+    document.documentElement.addEventListener('drop', (e) => {
+        e.preventDefault();
+        document.body.classList.remove('dragging');
+        
+        document.querySelector('#initimg').files = e.dataTransfer.files;
+    });
+
     // Load fields *before* registering change/save event
     loadFields(document.querySelector("#generate-form"));
     document.querySelector("#generate-form").addEventListener('change', (e) => {

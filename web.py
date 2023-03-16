@@ -42,6 +42,7 @@ txt2img.enable_xformers_memory_efficient_attention()
 
 print("Loading other pipelines...")
 img2img = StableDiffusionImg2ImgPipeline(**txt2img.components)
+img2img.enable_xformers_memory_efficient_attention()
 
 controlnet = ControlNetModel.from_pretrained(
     "./models/sd-controlnet-scribble",
@@ -50,6 +51,7 @@ controlnet = ControlNetModel.from_pretrained(
 )
 controlnet = controlnet.to("cuda")
 txt2img_controlnet = StableDiffusionControlNetPipeline(**txt2img.components, controlnet=controlnet)
+txt2img_controlnet.enable_xformers_memory_efficient_attention()
 
 txt2img.set_progress_bar_config(disable=True)
 img2img.set_progress_bar_config(disable=True)
@@ -77,6 +79,8 @@ def run(data, filename):
         print(f"Generating [{seed}]: +{data['positive']} | -{data['negative']}")
         result = None
         if 'initimg' in data and data['guide'] == 'img2img':
+            print(" - With img2img")
+            print("")
             result = img2img(
                 image=data['initimg'].resize((int(data['width']), int(data['height']))),
                 prompt_embeds=compel(data['positive']),
@@ -88,6 +92,8 @@ def run(data, filename):
                 callback=partial(update_progress, data)
             )
         elif 'initimg' in data and data['guide'] == 'controlnet':
+            print(" - With controlnet")
+            print("")
             result = txt2img_controlnet(
                 image=data['initimg'],
                 prompt_embeds=compel(data['positive']),
@@ -100,6 +106,7 @@ def run(data, filename):
                 callback=partial(update_progress, data)
             )
         else:
+            print("")
             result = txt2img(
                 prompt_embeds=compel(data['positive']),
                 negative_prompt_embeds=compel(data['negative']),
@@ -228,7 +235,6 @@ class DreamServer(BaseHTTPRequestHandler):
             boundary = self.headers['Content-Type'].split("boundary=")[1]
             data = MultipartParser(self.rfile, boundary.encode(), content_length, charset="utf-8")
             data = {part.name: (Image.open(BytesIO(part.raw)) if part.name == "initimg" else part.value) for part in data}
-            print(data)
 
             data['positive'] = data.get('positive', '')
             data['negative'] = data.get('negative', '')

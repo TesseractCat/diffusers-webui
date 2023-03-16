@@ -13,6 +13,7 @@ body {
     background-color: var(--bg-color);
     margin-top: 20vh;
     margin-bottom: 20vh;
+    transition: opacity 0.1s, background 0.1s;
 }
 hr {
     border: none;
@@ -51,6 +52,10 @@ input[type="file"] {
     width: 200px;
 }
 
+body.dragging {
+    opacity: 0.5;
+    background-color: lightcoral;
+}
 #header {
     display: inline-block;
     padding: 4px;
