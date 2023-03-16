@@ -1,5 +1,12 @@
 import torch
-from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, EulerAncestralDiscreteScheduler
+from diffusers.utils import logging
+from diffusers import (
+    StableDiffusionPipeline,
+    StableDiffusionImg2ImgPipeline,
+    StableDiffusionControlNetPipeline,
+    ControlNetModel,
+    EulerAncestralDiscreteScheduler
+)
 from compel import Compel
 from PIL import Image
 
@@ -17,22 +24,36 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from multipart import MultipartParser
 
+logging.set_verbosity_error()
+logging.disable_progress_bar()
+
 print("Loading model...")
-pipe = StableDiffusionPipeline.from_pretrained(
+txt2img = StableDiffusionPipeline.from_pretrained(
     "./models/stable-diffusion-v1-5",
     torch_dtype=torch.float16,
     local_files_only=True
 )
-compel = Compel(tokenizer=pipe.tokenizer, text_encoder=pipe.text_encoder)
-pipe.safety_checker = None
-pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
-pipe.set_progress_bar_config(disable=True)
+compel = Compel(tokenizer=txt2img.tokenizer, text_encoder=txt2img.text_encoder)
+txt2img.safety_checker = None
+txt2img.scheduler = EulerAncestralDiscreteScheduler.from_config(txt2img.scheduler.config)
 print("Moving to GPU...")
-pipe = pipe.to("cuda")
-pipe.enable_xformers_memory_efficient_attention()
+txt2img = txt2img.to("cuda")
+txt2img.enable_xformers_memory_efficient_attention()
 
-img2img_pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
-img2img_pipe.set_progress_bar_config(disable=True)
+print("Loading other pipelines...")
+img2img = StableDiffusionImg2ImgPipeline(**txt2img.components)
+
+controlnet = ControlNetModel.from_pretrained(
+    "./models/sd-controlnet-scribble",
+    torch_dtype=torch.float16,
+    local_files_only=True
+)
+controlnet = controlnet.to("cuda")
+txt2img_controlnet = StableDiffusionControlNetPipeline(**txt2img.components, controlnet=controlnet)
+
+txt2img.set_progress_bar_config(disable=True)
+img2img.set_progress_bar_config(disable=True)
+txt2img_controlnet.set_progress_bar_config(disable=True)
 
 done = {}
 queue = []
@@ -55,8 +76,20 @@ def run(data, filename):
         data['seed'] = str(seed)
         print(f"Generating [{seed}]: +{data['positive']} | -{data['negative']}")
         result = None
-        if 'initimg' not in data:
-            result = pipe(
+        if 'initimg' in data and data['guide'] == 'img2img':
+            result = img2img(
+                image=data['initimg'].resize((int(data['width']), int(data['height']))),
+                prompt_embeds=compel(data['positive']),
+                negative_prompt_embeds=compel(data['negative']),
+                num_inference_steps=int(data['steps']),
+                guidance_scale=float(data['cfgscale']),
+                strength=float(data['strength']),
+                generator=generator,
+                callback=partial(update_progress, data)
+            )
+        elif 'initimg' in data and data['guide'] == 'controlnet':
+            result = txt2img_controlnet(
+                image=data['initimg'],
                 prompt_embeds=compel(data['positive']),
                 negative_prompt_embeds=compel(data['negative']),
                 width=int(data['width']),
@@ -67,13 +100,13 @@ def run(data, filename):
                 callback=partial(update_progress, data)
             )
         else:
-            result = img2img_pipe(
-                image=data['initimg'].resize((int(data['width']), int(data['height']))),
+            result = txt2img(
                 prompt_embeds=compel(data['positive']),
                 negative_prompt_embeds=compel(data['negative']),
+                width=int(data['width']),
+                height=int(data['height']),
                 num_inference_steps=int(data['steps']),
                 guidance_scale=float(data['cfgscale']),
-                strength=float(data['strength']),
                 generator=generator,
                 callback=partial(update_progress, data)
             )

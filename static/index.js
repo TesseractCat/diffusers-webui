@@ -25,7 +25,9 @@ function loadFields(form) {
     for (const [k, v] of new FormData(form)) {
         const item = localStorage.getItem(k);
         if (item != null) {
-            form.querySelector(`*[name=${k}]`).value = item;
+            let elem = form.querySelector(`*[name=${k}]`);
+            elem.value = item;
+            elem.dispatchEvent(new Event('change'));
         }
     }
 }
@@ -53,6 +55,14 @@ function flashTitle() {
 }
 
 window.onload = () => {
+    document.querySelector("#guide").addEventListener('change', (e) => {
+        if (e.target.value != "img2img") {
+            document.querySelector("#strength").setAttribute("disabled", "");
+        } else {
+            document.querySelector("#strength").removeAttribute("disabled");
+        }
+    });
+
     document.querySelectorAll("textarea").forEach(elem => {
         elem.addEventListener("keydown", (e) => {
             if (e.which === 13 && !e.shiftKey) {
@@ -62,9 +72,6 @@ window.onload = () => {
             }
         });
     });
-    document.querySelector("#generate-form").addEventListener('change', (e) => {
-        saveFields(e.target.form);
-    });
     document.querySelector("#reset").addEventListener('click', (e) => {
         document.querySelector("#seed").value = -1;
         saveFields(e.target.form);
@@ -72,6 +79,11 @@ window.onload = () => {
     document.querySelector("#results").addEventListener('htmx:beforeSwap', () => {
         document.querySelector("#nothing")?.remove();
     });
+
+    // Load fields *before* registering change/save event
     loadFields(document.querySelector("#generate-form"));
+    document.querySelector("#generate-form").addEventListener('change', (e) => {
+        saveFields(e.target.form);
+    });
 };
 
