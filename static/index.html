@@ -5,7 +5,7 @@
     <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="static/index.css">
-    <script src="static/index.js"></script>
+    <script src="static/index.js" type="module"></script>
     <script src="static/htmx.min.js"></script>
     <script src="static/disable-element.js"></script>
   </head>
@@ -83,6 +83,10 @@
               </label>
             </div>
           </fieldset>
+        </details>
+        <details>
+          <summary>Sketchpad</summary>
+          <x-sketch id="sketchpad" pen-color="white" pen-size="10" bg-color="black"></x-sketch>
         </details>
       </form>
       <hr>

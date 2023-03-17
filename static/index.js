@@ -1,3 +1,5 @@
+import './sketch.js';
+
 // https://stackoverflow.com/a/52311051
 function getBase64(file) {
   return new Promise((resolve, reject) => {
@@ -43,16 +45,19 @@ function applySettings(e, settings) {
         }
     }
 }
+window.applySettings = applySettings;
 
 function cancel(item) {
     let filename = JSON.parse(item.getAttribute("hx-vals")).filename;
     fetch("/cancel?filename=" + encodeURIComponent(filename));
     item.remove();
 }
+window.cancel = cancel;
 function flashTitle() {
     document.title = "* Done *";
     setTimeout(() => document.title = "Stable Diffusion", 500);
 }
+window.flashTitle = flashTitle;
 
 window.onload = () => {
     document.querySelector("#guide").addEventListener('change', (e) => {
@@ -78,6 +83,15 @@ window.onload = () => {
     });
     document.querySelector("#results").addEventListener('htmx:beforeSwap', () => {
         document.querySelector("#nothing")?.remove();
+    });
+
+    // Sketchpad
+    document.querySelector("#sketchpad").addEventListener('change', async (e) => {
+        // Hacky way to set file input files
+        let file = await e.target.toFile("sketch.jpg");
+        let dt = new DataTransfer();
+        dt.items.add(file);
+        document.querySelector("#initimg").files = dt.files;
     });
 
     // Drag and drop

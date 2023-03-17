@@ -170,3 +170,12 @@ img {
     opacity: 0;
     transition: opacity 0.1s ease-out;
 }
+
+x-sketch {
+    width: 400px;
+    height: 400px;
+
+    margin: 10px auto 0px;
+    border: 1px solid gray;
+    border-radius: var(--radius);
+}
