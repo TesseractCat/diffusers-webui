@@ -10,8 +10,10 @@ from diffusers import (
 from compel import Compel
 from PIL import Image
 
+from string import Template
 import random
 from functools import partial
+import itertools
 import time
 import json
 from urllib.parse import urlparse, parse_qs, unquote, quote
@@ -19,10 +21,48 @@ import base64
 from io import BytesIO
 import mimetypes
 import os
+from pathlib import Path
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from multipart import MultipartParser
+
+index_template = Template(open("./static/index.html", "r").read())
+
+nothing_template = '''<i id="nothing">Nothing yet...</i>'''
+
+queue_template = Template(f'''\
+<div class="queue"
+    style="aspect-ratio: $width/$height;"
+    title="$title"
+    hx-get="/queue"
+    hx-trigger="every 1s [document.getElementById('loading') == null]"
+    hx-vals='{{"filename": "$filename"}}'
+    hx-swap="outerHTML"
+    onclick="cancel(this);">
+</div>\
+''')
+
+loading_template = Template(f'''\
+<div id="loading" class="loading"
+    style="aspect-ratio: $width/$height;"
+    title="$title"
+    hx-get="/progress"
+    hx-trigger="load delay:0.5s"
+    hx-vals='{{"filename": "$filename"}}'
+    hx-swap="outerHTML">
+    <div id="loading-bar" style="width: $progress%"></div>
+</div>\
+''')
+
+result_template = Template(f'''\
+<img src="$filename"
+        title="$title"
+        style="aspect-ratio: $width/$height;"
+        onload="flashTitle();this.style.opacity='1';"
+        oncontextmenu="applySettings(event, $settings);"
+        onclick="window.open(this.src, '_blank').focus();"></img>\
+''')
 
 logging.set_verbosity_error()
 logging.disable_progress_bar()
@@ -118,7 +158,11 @@ def run(data, filename):
                 callback=partial(update_progress, data)
             )
         image = result.images[0]
-        image.save(filename, 'jpeg', progressive=True, quality=90)
+        exif = image.getexif()
+        primitives = (int, float, bool, str, list, dict) # Only save basic data
+        exif[0x9286] = json.dumps({k: v for k, v in data.items() if type(v) in primitives}) # UserComment exif field
+
+        image.save(filename, 'jpeg', progressive=True, quality=90, exif=exif)
         queue.pop(0)
         done[filename] = data
 
@@ -133,8 +177,31 @@ class DreamServer(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
-            with open("./static/index.html", "rb") as content:
-                self.wfile.write(content.read())
+
+            results = []
+            files = itertools.islice(
+                sorted(Path('./outputs').iterdir(), key=os.path.getctime, reverse=True),
+                8
+            )
+            for filename in files:
+                with Image.open(filename) as image:
+                    exif = image.getexif()
+                    data = json.loads(exif[0x9286])
+                    settings = json.dumps(data).replace('"', '&quot;')
+                    results.append(result_template.substitute(
+                        filename=filename, title=data['title'].replace('"', "&quot;"),
+                        width=data['width'], height=data['height'],
+                        settings=settings
+                    ))
+
+            if len(results) > 0:
+                self.wfile.write(index_template.substitute(
+                    results="\n".join(results)
+                ).encode())
+            else:
+                self.wfile.write(index_template.substitute(
+                    results=nothing_template
+                ).encode())
         elif os.path.exists("." + unquote(parsed.path)):
             mime_type = mimetypes.guess_type(unquote(parsed.path))[0]
             if mime_type is not None:
@@ -156,17 +223,11 @@ class DreamServer(BaseHTTPRequestHandler):
                 self.end_headers()
 
                 progress = 0
-                self.wfile.write(f'''\
-                <div class="loading"
-                    style="aspect-ratio: {data['width']}/{data['height']};"
-                    title="{data['title'].replace('"', "&quot;")}"
-                    hx-get="/progress"
-                    hx-trigger="load delay:0.5s"
-                    hx-vals='{{"filename": "{filename}"}}'
-                    hx-swap="outerHTML">
-                    <div id="loading-bar" style="width: {progress*100}%"></div>
-                </div>\
-                '''.encode())
+                self.wfile.write(loading_template.substitute(
+                    filename=filename, title=data['title'].replace('"', "&quot;"),
+                    width=data['width'], height=data['height'],
+                    progress=progress*100,
+                ).encode())
 
                 thread = Thread(target = run, args = (data, filename))
                 thread.start()
@@ -195,29 +256,20 @@ class DreamServer(BaseHTTPRequestHandler):
             data = next((x['data'] for x in queue if x['filename'] == filename), None)
 
             if data != None:
-                self.wfile.write(f'''\
-                <div id="loading" class="loading"
-                    style="aspect-ratio: {data['width']}/{data['height']};"
-                    title="{data['title'].replace('"', "&quot;")}"
-                    hx-get="/progress"
-                    hx-trigger="load delay:0.5s"
-                    hx-vals='{{"filename": "{filename}"}}'
-                    hx-swap="outerHTML">
-                    <div id="loading-bar" style="width: {progress*100}%"></div>
-                </div>\
-                '''.encode())
+                self.wfile.write(loading_template.substitute(
+                    filename=filename, title=data['title'].replace('"', "&quot;"),
+                    width=data['width'], height=data['height'],
+                    progress=progress*100,
+                ).encode())
             else:
                 data = done[filename]
                 data['initimg'] = None
                 settings = json.dumps(data).replace('"', '&quot;')
-                self.wfile.write(f'''\
-                <img src="{filename}"
-                     title="{data['title'].replace('"', "&quot;")}"
-                     style="aspect-ratio: {data['width']}/{data['height']};"
-                     onload="flashTitle();this.style.opacity='1';"
-                     oncontextmenu="applySettings(event, {settings});"
-                     onclick="window.open(this.src, '_blank').focus();"></img>
-                '''.encode())
+                self.wfile.write(result_template.substitute(
+                    filename=filename, title=data['title'].replace('"', "&quot;"),
+                    width=data['width'], height=data['height'],
+                    settings=settings
+                ).encode())
         else:
             self.send_response(404)
 
@@ -250,17 +302,10 @@ class DreamServer(BaseHTTPRequestHandler):
                 entry = {"data": data, "filename": filename}
                 queue.append(entry)
 
-                elements.append(f'''\
-                <div class="queue"
-                    style="aspect-ratio: {data['width']}/{data['height']};"
-                    title="{data['title'].replace('"', "&quot;")}"
-                    hx-get="/queue"
-                    hx-trigger="every 1s [document.getElementById('loading') == null]"
-                    hx-vals='{{"filename": "{filename}"}}'
-                    hx-swap="outerHTML"
-                    onclick="cancel(this);">
-                </div>\
-                ''')
+                elements.append(queue_template.substitute(
+                    filename=filename, title=data['title'].replace('"', "&quot;"),
+                    width=data['width'], height=data['height']
+                ))
             elements.reverse()
             self.wfile.write("\n".join(elements).encode())
 
