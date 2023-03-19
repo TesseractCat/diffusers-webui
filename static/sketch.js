@@ -35,7 +35,8 @@ button:active {
     background-color: #666;
 }
 #clear {
-    border-radius: 5px 5px 0px 0px;
+    /*border-radius: 5px 5px 0px 0px;*/
+    border-radius: 5px;
 }
 #send {
     border-radius: 0px 0px 5px 5px;
@@ -54,13 +55,13 @@ button:active {
         let buttons = document.createElement("div");
         buttons.id = "buttons";
         let clearButton = document.createElement("button");
-        let sendButton = document.createElement("button");
         clearButton.id = "clear";
-        sendButton.id = "send";
         clearButton.innerText = "⌫";
-        sendButton.innerText = "⏎";
         buttons.appendChild(clearButton);
-        buttons.appendChild(sendButton);
+        // let sendButton = document.createElement("button");
+        // sendButton.id = "send";
+        // sendButton.innerText = "⏎";
+        // buttons.appendChild(sendButton);
         this.#shadow.appendChild(buttons);
 
         this.#canvas = document.createElement("canvas");
@@ -81,9 +82,9 @@ button:active {
         //window.addEventListener('resize', resizeCanvas);
 
         clearButton.addEventListener('click', clearCanvas);
-        sendButton.addEventListener('click', () => {
-            this.dispatchEvent(new Event('change'));
-        });
+        // sendButton.addEventListener('click', () => {
+        //     this.dispatchEvent(new Event('change'));
+        // });
 
         let down = false;
         let [x, y] = [0, 0];
@@ -102,6 +103,9 @@ button:active {
             this.#ctx.stroke();
         });
         window.addEventListener('mouseup', () => {
+            if (down) {
+                this.dispatchEvent(new Event('change'));
+            }
             down = false;
             this.#ctx.closePath();
         });

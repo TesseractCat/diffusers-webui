@@ -41,7 +41,9 @@ function applySettings(e, settings) {
     for (const [k, v] of new FormData(form)) {
         const item = settings[k];
         if (item != null) {
-            form.querySelector(`*[name=${k}]`).value = item;
+            let elem = form.querySelector(`*[name=${k}]`);
+            elem.value = item;
+            elem.dispatchEvent(new Event('change'));
         }
     }
 }
@@ -77,10 +79,6 @@ window.onload = () => {
             }
         });
     });
-    document.querySelector("#reset").addEventListener('click', (e) => {
-        document.querySelector("#seed").value = -1;
-        saveFields(e.target.form);
-    });
     document.querySelector("#results").addEventListener('htmx:beforeSwap', () => {
         document.querySelector("#nothing")?.remove();
     });
@@ -88,7 +86,7 @@ window.onload = () => {
     // Sketchpad
     document.querySelector("#sketchpad").addEventListener('change', async (e) => {
         // Hacky way to set file input files
-        let file = await e.target.toFile("sketch.jpg");
+        let file = await e.target.toFile("Sketch");
         let dt = new DataTransfer();
         dt.items.add(file);
         document.querySelector("#initimg").files = dt.files;
