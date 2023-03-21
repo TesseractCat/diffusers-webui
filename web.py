@@ -13,6 +13,7 @@ from PIL import Image
 from string import Template
 import random
 from functools import partial
+from collections import namedtuple
 import itertools
 import time
 import json
@@ -31,38 +32,43 @@ index_template = Template(open("./static/index.html", "r").read())
 
 nothing_template = '''<i id="nothing">Nothing yet...</i>'''
 
-queue_template = Template(f'''\
+queue_template = Template('''\
 <div class="queue"
     style="aspect-ratio: $width/$height;"
     title="$title"
     hx-get="/queue"
     hx-trigger="every 1s [document.getElementById('loading') == null]"
-    hx-vals='{{"filename": "$filename"}}'
+    hx-vals='{"filename": "$filename"}'
     hx-swap="outerHTML"
     onclick="cancel(this);">
 </div>\
 ''')
 
-loading_template = Template(f'''\
+loading_template = Template('''\
 <div id="loading" class="loading"
     style="aspect-ratio: $width/$height;"
     title="$title"
     hx-get="/progress"
     hx-trigger="load delay:0.5s"
-    hx-vals='{{"filename": "$filename"}}'
+    hx-vals='{"filename": "$filename"}'
     hx-swap="outerHTML">
     <div id="loading-bar" style="width: $progress%"></div>
 </div>\
 ''')
 
-result_template = Template(f'''\
+result_template = Template('''\
 <img src="$filename"
         title="$title"
         style="aspect-ratio: $width/$height;"
-        onload="flashTitle();this.style.opacity='1';"
+        onload="this.style.opacity='1';$onload"
         oncontextmenu="applySettings(event, $settings);"
         onclick="window.open(this.src, '_blank').focus();"></img>\
 ''')
+
+Pipeline = namedtuple('Pipeline', ['pipeline', 'name', 'settings', 'specialize'])
+pipelines = []
+
+pipeline_option_template= Template('''<option value="$name">$name</option>''')
 
 logging.set_verbosity_error()
 logging.disable_progress_bar()
@@ -78,11 +84,9 @@ txt2img.safety_checker = None
 txt2img.scheduler = EulerAncestralDiscreteScheduler.from_config(txt2img.scheduler.config)
 print("Moving to GPU...")
 txt2img = txt2img.to("cuda")
-txt2img.enable_xformers_memory_efficient_attention()
 
 print("Loading other pipelines...")
 img2img = StableDiffusionImg2ImgPipeline(**txt2img.components)
-img2img.enable_xformers_memory_efficient_attention()
 
 controlnet = ControlNetModel.from_pretrained(
     "./models/sd-controlnet-scribble",
@@ -91,11 +95,38 @@ controlnet = ControlNetModel.from_pretrained(
 )
 controlnet = controlnet.to("cuda")
 txt2img_controlnet = StableDiffusionControlNetPipeline(**txt2img.components, controlnet=controlnet)
-txt2img_controlnet.enable_xformers_memory_efficient_attention()
 
-txt2img.set_progress_bar_config(disable=True)
-img2img.set_progress_bar_config(disable=True)
-txt2img_controlnet.set_progress_bar_config(disable=True)
+pipelines.append(Pipeline(txt2img, 'Text to image', '''
+<i>No settings...</i>
+''', lambda p,d: partial(p,
+                         width=int(d['width']), height=int(d['height'])
+                         )))
+pipelines.append(Pipeline(img2img, 'Image to image', '''
+<label for="initimg">
+    <input type="file" id="initimg" name="initimg" accept=".jpg, .jpeg, .png" required>
+    <button type="button"
+            onclick="this.previousElementSibling.value = '';">&olarr;</button>
+</label>
+<label for="strength">Strength:
+    <input value="0.8" min="0" max="1" type="number" id="strength" name="strength" step="0.1">
+</label>
+''', lambda p,d: partial(p,
+                         image=d['initimg'].resize((int(d['width']), int(d['height'])))
+                         )))
+pipelines.append(Pipeline(txt2img_controlnet, 'ControlNet [Scribble]', '''
+<label for="initimg">
+    <input type="file" id="initimg" name="initimg" accept=".jpg, .jpeg, .png" required>
+    <button type="button"
+            onclick="this.previousElementSibling.value = '';">&olarr;</button>
+</label>
+''', lambda p,d: partial(p,
+                         image=d['initimg'],
+                         width=int(d['width']), height=int(d['height'])
+                         )))
+
+for p in pipelines:
+    p.pipeline.enable_xformers_memory_efficient_attention()
+    p.pipeline.set_progress_bar_config(disable=True)
 
 done = {}
 queue = []
@@ -116,47 +147,20 @@ def run(data, filename):
         if seed == -1:
             seed = generator.seed()
         data['seed'] = str(seed)
-        print(f"Generating [{seed}]: +{data['positive']} | -{data['negative']}")
-        result = None
-        if 'initimg' in data and data['guide'] == 'img2img':
-            print(" - With img2img")
-            print("")
-            result = img2img(
-                image=data['initimg'].resize((int(data['width']), int(data['height']))),
-                prompt_embeds=compel(data['positive']),
-                negative_prompt_embeds=compel(data['negative']),
-                num_inference_steps=int(data['steps']),
-                guidance_scale=float(data['cfgscale']),
-                strength=float(data['strength']),
-                generator=generator,
-                callback=partial(update_progress, data)
-            )
-        elif 'initimg' in data and data['guide'] == 'controlnet':
-            print(" - With controlnet")
-            print("")
-            result = txt2img_controlnet(
-                image=data['initimg'],
-                prompt_embeds=compel(data['positive']),
-                negative_prompt_embeds=compel(data['negative']),
-                width=int(data['width']),
-                height=int(data['height']),
-                num_inference_steps=int(data['steps']),
-                guidance_scale=float(data['cfgscale']),
-                generator=generator,
-                callback=partial(update_progress, data)
-            )
-        else:
-            print("")
-            result = txt2img(
-                prompt_embeds=compel(data['positive']),
-                negative_prompt_embeds=compel(data['negative']),
-                width=int(data['width']),
-                height=int(data['height']),
-                num_inference_steps=int(data['steps']),
-                guidance_scale=float(data['cfgscale']),
-                generator=generator,
-                callback=partial(update_progress, data)
-            )
+        print(f"Generating [{data['pipeline']}]/[{seed}]: +{data['positive']} | -{data['negative']}")
+
+        pipeline = next(p for p in pipelines if p.name == data['pipeline'])
+        specialized = pipeline.specialize(pipeline.pipeline, data)
+
+        result = specialized(
+            prompt_embeds=compel(data['positive']),
+            negative_prompt_embeds=compel(data['negative']),
+            num_inference_steps=int(data['steps']),
+            guidance_scale=float(data['cfgscale']),
+            generator=generator,
+            callback=partial(update_progress, data)
+        )
+
         image = result.images[0]
         exif = image.getexif()
         primitives = (int, float, bool, str, list, dict) # Only save basic data
@@ -191,17 +195,17 @@ class DreamServer(BaseHTTPRequestHandler):
                     results.append(result_template.substitute(
                         filename=filename, title=data['title'].replace('"', "&quot;"),
                         width=data['width'], height=data['height'],
-                        settings=settings
+                        settings=settings, onload=""
                     ))
 
-            if len(results) > 0:
-                self.wfile.write(index_template.substitute(
-                    results="\n".join(results)
-                ).encode())
-            else:
-                self.wfile.write(index_template.substitute(
-                    results=nothing_template
-                ).encode())
+            self.wfile.write(index_template.substitute(
+                pipelines="\n".join(map(
+                    lambda p: pipeline_option_template.substitute(name=p.name),
+                    pipelines
+                )),
+                pipeline_settings=pipelines[0].settings,
+                results="\n".join(results) if len(results) > 0 else nothing_template
+            ).encode())
         elif os.path.exists("." + unquote(parsed.path)):
             mime_type = mimetypes.guess_type(unquote(parsed.path))[0]
             if mime_type is not None:
@@ -212,6 +216,15 @@ class DreamServer(BaseHTTPRequestHandler):
                     self.wfile.write(content.read())
             else:
                 self.send_response(404)
+        elif parsed.path == "/settings":
+            query = parse_qs(parsed.query)
+            name = query['pipeline'][0]
+            pipeline = next(p for p in pipelines if p.name == name)
+
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            self.wfile.write(pipeline.settings.encode())
         elif parsed.path == "/queue":
             query = parse_qs(parsed.query)
             filename = query['filename'][0]
@@ -268,7 +281,7 @@ class DreamServer(BaseHTTPRequestHandler):
                 self.wfile.write(result_template.substitute(
                     filename=filename, title=data['title'].replace('"', "&quot;"),
                     width=data['width'], height=data['height'],
-                    settings=settings
+                    settings=settings, onload="flashTitle();"
                 ).encode())
         else:
             self.send_response(404)

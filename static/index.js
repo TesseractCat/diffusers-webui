@@ -62,14 +62,6 @@ function flashTitle() {
 window.flashTitle = flashTitle;
 
 window.onload = () => {
-    document.querySelector("#guide").addEventListener('change', (e) => {
-        if (e.target.value != "img2img") {
-            document.querySelector("#strength").setAttribute("disabled", "");
-        } else {
-            document.querySelector("#strength").removeAttribute("disabled");
-        }
-    });
-
     document.querySelectorAll("textarea").forEach(elem => {
         elem.addEventListener("keydown", (e) => {
             if (e.which === 13 && !e.shiftKey) {
@@ -89,7 +81,9 @@ window.onload = () => {
         let file = await e.target.toFile("Sketch");
         let dt = new DataTransfer();
         dt.items.add(file);
-        document.querySelector("#initimg").files = dt.files;
+        let i = document.querySelector("#initimg");
+        if (i !== null)
+            i.files = dt.files;
     });
 
     // Drag and drop

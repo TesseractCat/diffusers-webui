@@ -105,6 +105,11 @@ fieldset {
     padding: 5px 10px 5px 10px;
     border: 1px solid black;
 }
+#pipeline-settings {
+    display: inherit;
+    flex-direction: inherit;
+    gap: inherit;
+}
 #results {
     max-width: 1000px;
     margin: auto;
